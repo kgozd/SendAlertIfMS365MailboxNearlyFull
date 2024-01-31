@@ -1,0 +1,16 @@
+{
+    "MS365Username": "user@somedomain.com",
+    "MS365Password": "that user ms365 password",
+
+ 
+    "RecipientEmail": "recipient@example.com",
+
+    "SenderEmail": "SenderEmailPassword@gmail.com",
+    "_comment ":"below application password for gmail NOT just user password",
+    "SenderEmailPassword": "application password for gmail",
+
+
+    "SMTPServer" : "smtp.gmail.com",
+    "SMTPPort" : 587
+}
+
