@@ -2,7 +2,6 @@
 #Install-Module -name AzureAD
 #Install-Module -Name ExchangeOnlineManagement
 
-
 #connect to exchange online and azuread
 function connect_ms_apps {
     param($ConfigData)
@@ -16,10 +15,13 @@ function connect_ms_apps {
     Clear-Host
 }
 
+
 function close_ms_sessions {
     Disconnect-ExchangeOnline -Confirm:$false
     Disconnect-AzureAD -Confirm:$false
 }
+
+
 function log_to_file {
     param (
         [string]$Message,
@@ -40,6 +42,7 @@ function log_to_file {
 
     Write-Host $formatted_message
 }
+
 
 function get_user_data {
     $skuIds = @(
@@ -83,14 +86,13 @@ function get_user_data {
             continue
         }
 
-        if ($used_space_pctg -gt 90) {
+        if ($used_space_pctg -gt $ConfigData.MinimumUsedStorageToSendAlert) {
             $UserInfo = New-Object PSObject -Property @{
     
                 UserDisplayName        = $User.DisplayName
                 UserMail               = $User.UserPrincipalName
                 MailboxUsedSpaceInPctg = $used_space_pctg 
             }
-
             $UserInformation += $UserInfo 
         }
     }
@@ -100,7 +102,7 @@ function get_user_data {
 
 function send_emails {
     param ($ConfigData, $UserInformation)
-    $EmailHTML = "<html><body><h2 style='font-size: 17px;'>Below is a list of mailboxes whose used space exceeds 90% of the maximum mailbox space</h2>
+    $EmailHTML = "<html><body><h2 style='font-size: 17px;'>Below is a list of mailboxes whose used space exceeds $($ConfigData.MinimumUsedStorageToSendAlert)% of the maximum mailbox space</h2>
             <table style='border-collapse: collapse; border: 2px solid black; margin: 10px; font-size: 14px; width: 80%;' cellpadding='10'><tr>
             <th style='border: 1px solid black; font-weight: bold;'>UserDisplayName</th>
             <th style='border: 1px solid black; font-weight: bold;'>UserEmailAdress</th>
@@ -116,7 +118,6 @@ function send_emails {
     $EmailHTML += "</table></body></html>"
     $EmailHTML += "<p style='color: red; font-weight: bold;'>This message has been generated automatically; please do not reply to this email!</p>"
 
-
     # Smtp server config; this below is for gmail 
     $SMTPServer = $ConfigData.SMTPServer
     $SMTPPort = $ConfigData.SMTPPort
@@ -129,7 +130,7 @@ function send_emails {
     # SenderEmail is an email which will be using for automatic mail sending to every manager on list
     $EmailTo = $ConfigData.RecipientEmail
     $EmailFrom = $ConfigData.SenderEmail
-    $EmailSubject = "List of Exchange mailboxes that exceed 90% of the total space."
+    $EmailSubject = "List of Exchange mailboxes that exceed $($ConfigData.MinimumUsedStorageToSendAlert)% of the total space."
 
     Send-MailMessage -To $EmailTo -From $EmailFrom -Subject $EmailSubject -BodyAsHtml $EmailHTML -SmtpServer $SMTPServer `
         -Port $SMTPPort -UseSsl -Credential $SMTPCredential -Encoding UTF8
@@ -137,18 +138,17 @@ function send_emails {
 }
 
 
-
-
-
-
-
 function main {
     $ConfigData = Get-Content -Path ".\CredsConfig.json" | ConvertFrom-Json
 
     connect_ms_apps -ConfigData $ConfigData
     $users_with__nearly_full_mailboxes = get_user_data 
+    if($users_with__nearly_full_mailboxes.Count -ne 0){
+        send_emails -ConfigData $ConfigData -UserInformation $users_with__nearly_full_mailboxes
+    }else{
+        Write-Host "None of the mailboxes meet the criteria for sending an alert" -ForegroundColor Yellow
 
-    send_emails -ConfigData $ConfigData -UserInformation $users_with__nearly_full_mailboxes
+    }
  
     close_ms_sessions
 }
