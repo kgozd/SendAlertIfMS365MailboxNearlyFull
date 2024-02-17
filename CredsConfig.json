@@ -11,6 +11,9 @@
 
 
     "SMTPServer" : "smtp.gmail.com",
-    "SMTPPort" : 587
+    "SMTPPort" : 587,
+
+    "MinimumUsedStorageToSendAlert": 90
+
 }
 
